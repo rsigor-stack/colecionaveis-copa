@@ -24,5 +24,6 @@ const api = {
   criarProposta: (deUsuario, paraUsuario, oferecidos, pedidos) =>
     chamarBackend('criarPropostaTroca', { deUsuario, paraUsuario, itensOferecidos: oferecidos, itensPedidos: pedidos }),
   responderProposta: (propostaId, resposta) => chamarBackend('responderProposta', { propostaId, resposta }),
-  confirmarTroca: (propostaId) => chamarBackend('confirmarTroca', { propostaId })
+  confirmarTroca: (propostaId) => chamarBackend('confirmarTroca', { propostaId }),
+  listarPropostas: (usuarioId) => chamarBackend('listarPropostasUsuario', { usuarioId })
 };
