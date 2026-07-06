@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Colecionáveis Copa - Teste</title>
+</head>
+<body>
+  <h1>Teste de conexão com o backend</h1>
+  <button onclick="testarConexao()">Testar</button>
+  <pre id="resultado"></pre>
+
+  <script>
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxv4SYgLwYNYpRWtBmzZY4qCFwOrC1YlKwZWkEkp6iqUTWn-m_6d4rN-eAg_W5wWsvA/exec';
+
+    async function testarConexao() {
+      const resposta = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ acao: 'loginOuCadastrar', email: 'teste@teste.com', nome: 'Teste' })
+      });
+      const dados = await resposta.json();
+      document.getElementById('resultado').textContent = JSON.stringify(dados, null, 2);
+    }
+  </script>
+</body>
+</html>
