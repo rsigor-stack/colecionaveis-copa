@@ -2,24 +2,81 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Colecionáveis Copa - Teste</title>
+  <title>Colecionáveis Copa</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 400px;
+      margin: 80px auto;
+      padding: 0 20px;
+    }
+    h1 { text-align: center; }
+    input {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #erro { color: red; margin-top: 10px; }
+    #carregando { text-align: center; color: #666; }
+  </style>
 </head>
 <body>
-  <h1>Teste de conexão com o backend</h1>
-  <button onclick="testarConexao()">Testar</button>
-  <pre id="resultado"></pre>
 
+  <div id="carregando">Carregando...</div>
+
+  <div id="formulario" style="display: none;">
+    <h1>Álbum da Copa</h1>
+    <input type="text" id="nome" placeholder="Seu nome">
+    <input type="email" id="email" placeholder="Seu email">
+    <button onclick="fazerLogin()">Entrar</button>
+    <p id="erro"></p>
+  </div>
+
+  <script src="session.js"></script>
+  <script src="api.js"></script>
   <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxv4SYgLwYNYpRWtBmzZY4qCFwOrC1YlKwZWkEkp6iqUTWn-m_6d4rN-eAg_W5wWsvA/exec';
+    // Ao carregar a página, verifica se já existe sessão
+    window.onload = function() {
+      const sessao = getSessao();
+      if (sessao) {
+        window.location.href = 'album.html';
+      } else {
+        document.getElementById('carregando').style.display = 'none';
+        document.getElementById('formulario').style.display = 'block';
+      }
+    };
 
-    async function testarConexao() {
-      const resposta = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ acao: 'loginOuCadastrar', email: 'teste@teste.com', nome: 'Teste' })
-      });
-      const dados = await resposta.json();
-      document.getElementById('resultado').textContent = JSON.stringify(dados, null, 2);
+    async function fazerLogin() {
+      const nome = document.getElementById('nome').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const erroEl = document.getElementById('erro');
+
+      if (!email) {
+        erroEl.textContent = 'Digite seu email';
+        return;
+      }
+
+      erroEl.textContent = '';
+
+      const resultado = await api.login(email, nome);
+
+      if (resultado.sucesso) {
+        salvarSessao(resultado.usuario);
+        window.location.href = 'album.html';
+      } else {
+        erroEl.textContent = resultado.erro || 'Erro ao entrar, tente novamente';
+      }
     }
   </script>
 </body>
