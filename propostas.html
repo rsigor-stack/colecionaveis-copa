@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Minhas Propostas - Copa</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    nav a {
+      margin-left: 15px;
+      text-decoration: none;
+      color: #2563eb;
+      font-weight: bold;
+    }
+    section {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    .proposta {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+    }
+    .proposta:last-child { border-bottom: none; }
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    .status.CRIADA { background: #fef3c7; color: #92400e; }
+    .status.ACEITA { background: #dbeafe; color: #1e40af; }
+    .status.RECUSADA { background: #fee2e2; color: #991b1b; }
+    .status.CONCLUIDA { background: #dcfce7; color: #166534; }
+    .status.FALHOU { background: #fee2e2; color: #991b1b; }
+    button {
+      padding: 6px 12px;
+      margin-right: 6px;
+      margin-top: 8px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: white;
+    }
+    .btn-aceitar { background: #22c55e; }
+    .btn-recusar { background: #ef4444; }
+    .btn-confirmar { background: #2563eb; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Minhas Propostas</h1>
+    <nav>
+      <a href="album.html">Álbum</a>
+      <a href="mural.html">Mural</a>
+      <a href="#" onclick="sair()">Sair</a>
+    </nav>
+  </header>
+
+  <section>
+    <h2>Recebidas (aguardando você)</h2>
+    <div id="recebidas">Carregando...</div>
+  </section>
+
+  <section>
+    <h2>Enviadas por você</h2>
+    <div id="enviadas">Carregando...</div>
+  </section>
+
+  <script src="session.js"></script>
+  <script src="api.js"></script>
+  <script>
+    let usuario = null;
+
+    window.onload = async function() {
+      usuario = getSessao();
+      if (!usuario) {
+        window.location.href = 'index.html';
+        return;
+      }
+      await carregar();
+    };
+
+    async function carregar() {
+      const resultado = await api.listarPropostas(usuario.id);
+
+      if (!resultado.sucesso) {
+        document.getElementById('recebidas').textContent = 'Erro ao carregar propostas';
+        return;
+      }
+
+      montarLista('recebidas', resultado.recebidas, true);
+      montarLista('enviadas', resultado.enviadas, false);
+    }
+
+    function montarLista(containerId, propostas, ehRecebida) {
+      const div = document.getElementById(containerId);
+
+      if (propostas.length === 0) {
+        div.innerHTML = '<p>Nenhuma proposta por aqui.</p>';
+        return;
+      }
+
+      div.innerHTML = '';
+
+      propostas.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'proposta';
+
+        const oferecidos = p.itens_oferecidos.map(i => i.nome).join(', ');
+        const pedidos = p.itens_pedidos.map(i => i.nome).join(', ');
+        const outraPessoa = ehRecebida ? p.de_usuario_nome : p.para_usuario_nome;
+
+        let botoes = '';
+
+        if (ehRecebida && p.status === 'CRIADA') {
+          botoes = `
+            <button class="btn-aceitar" onclick="responder('${p.id}', 'ACEITA')">Aceitar</button>
+            <button class="btn-recusar" onclick="responder('${p.id}', 'RECUSADA')">Recusar</button>
+          `;
+        }
+
+        if (p.status === 'ACEITA') {
+          botoes = `<button class="btn-confirmar" onclick="confirmar('${p.id}')">Confirmar troca</button>`;
+        }
+
+        item.innerHTML = `
+          <div>
+            <strong>${outraPessoa}</strong>
+            <span class="status ${p.status}">${p.status}</span>
+          </div>
+          <div>Oferece: ${oferecidos}</div>
+          <div>Pede: ${pedidos}</div>
+          ${botoes}
+        `;
+
+        div.appendChild(item);
+      });
+    }
+
+    async function responder(propostaId, resposta) {
+      const resultado = await api.responderProposta(propostaId, resposta);
+      if (resultado.erro) {
+        alert('Erro: ' + resultado.erro);
+      }
+      await carregar();
+    }
+
+    async function confirmar(propostaId) {
+      const resultado = await api.confirmarTroca(propostaId);
+      if (resultado.erro) {
+        alert('Erro: ' + resultado.erro);
+      } else {
+        alert('Troca confirmada com sucesso!');
+      }
+      await carregar();
+    }
+
+    function sair() {
+      limparSessao();
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>
