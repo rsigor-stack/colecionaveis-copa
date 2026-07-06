@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Mural de Trocas - Copa</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    nav a {
+      margin-left: 15px;
+      text-decoration: none;
+      color: #2563eb;
+      font-weight: bold;
+    }
+    section {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    h2 { margin-top: 0; }
+    select, button {
+      padding: 8px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .oferta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .oferta:last-child { border-bottom: none; }
+    .oferta img {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin-right: 10px;
+    }
+    .oferta-info { display: flex; align-items: center; }
+    .msg { margin-top: 10px; font-size: 14px; }
+    .msg.erro { color: red; }
+    .msg.sucesso { color: green; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Mural de Trocas</h1>
+    <nav>
+      <a href="album.html">Álbum</a>
+      <a href="propostas.html">Propostas</a>
+      <a href="#" onclick="sair()">Sair</a>
+    </nav>
+  </header>
+
+  <section>
+    <h2>Publicar oferta</h2>
+    <div>
+      <select id="selectOferece"></select>
+      <select id="selectDeseja">
+        <option value="">Qualquer figurinha</option>
+      </select>
+      <button onclick="publicar()">Publicar oferta</button>
+    </div>
+    <div class="msg" id="msgPublicar"></div>
+  </section>
+
+  <section>
+    <h2>Ofertas disponíveis</h2>
+    <div id="listaOfertas">Carregando...</div>
+  </section>
+
+  <script src="session.js"></script>
+  <script src="api.js"></script>
+  <script>
+    let usuario = null;
+    let minhasRepetidas = [];
+    let todasFigurinhas = [];
+
+    window.onload = async function() {
+      usuario = getSessao();
+      if (!usuario) {
+        window.location.href = 'index.html';
+        return;
+      }
+      await carregarTudo();
+    };
+
+    async function carregarTudo() {
+      const [album, repetidas, ofertas] = await Promise.all([
+        api.getAlbum(usuario.id),
+        api.getRepetidas(usuario.id),
+        api.listarOfertas(usuario.id)
+      ]);
+
+      todasFigurinhas = album.sucesso ? album.album : [];
+      minhasRepetidas = repetidas.sucesso ? repetidas.repetidas : [];
+
+      montarSelectOferece();
+      montarSelectDeseja();
+      montarListaOfertas(ofertas.sucesso ? ofertas.ofertas : []);
+    }
+
+    function montarSelectOferece() {
+      const select = document.getElementById('selectOferece');
+      select.innerHTML = '';
+
+      if (minhasRepetidas.length === 0) {
+        select.innerHTML = '<option value="">Você não tem repetidas para oferecer</option>';
+        return;
+      }
+
+      minhasRepetidas.forEach(fig => {
+        const option = document.createElement('option');
+        option.value = fig.figurinha_id;
+        option.textContent = `${fig.nome} (${fig.quantidade_disponivel_para_troca} disponível)`;
+        select.appendChild(option);
+      });
+    }
+
+    function montarSelectDeseja() {
+      const select = document.getElementById('selectDeseja');
+      // mantém "Qualquer figurinha" e adiciona as demais do catálogo
+      select.innerHTML = '<option value="">Qualquer figurinha</option>';
+
+      todasFigurinhas.forEach(fig => {
+        const option = document.createElement('option');
+        option.value = fig.id;
+        option.textContent = fig.nome;
+        select.appendChild(option);
+      });
+    }
+
+    function montarListaOfertas(ofertas) {
+      const div = document.getElementById('listaOfertas');
+
+      if (ofertas.length === 0) {
+        div.innerHTML = '<p>Nenhuma oferta disponível no momento.</p>';
+        return;
+      }
+
+      div.innerHTML = '';
+
+      ofertas.forEach(oferta => {
+        const linha = document.createElement('div');
+        linha.className = 'oferta';
+
+        linha.innerHTML = `
+          <div class="oferta-info">
+            <img src="${oferta.oferece.imagem_url}" alt="${oferta.oferece.nome}">
+            <div>
+              <strong>${oferta.usuario_nome}</strong> oferece <strong>${oferta.oferece.nome}</strong><br>
+              <small>Deseja: ${oferta.deseja ? oferta.deseja.nome : 'qualquer repetida'}</small>
+            </div>
+          </div>
+          <button onclick="abrirTopar('${oferta.id}', '${oferta.deseja ? oferta.deseja.id : ''}')">Topar</button>
+        `;
+
+        div.appendChild(linha);
+      });
+    }
+
+    async function publicar() {
+      const ofereceId = document.getElementById('selectOferece').value;
+      const desejaId = document.getElementById('selectDeseja').value;
+      const msgEl = document.getElementById('msgPublicar');
+
+      if (!ofereceId) {
+        msgEl.className = 'msg erro';
+        msgEl.textContent = 'Selecione uma figurinha para oferecer';
+        return;
+      }
+
+      const resultado = await api.publicarOferta(usuario.id, ofereceId, desejaId);
+
+      if (resultado.sucesso) {
+        msgEl.className = 'msg sucesso';
+        msgEl.textContent = 'Oferta publicada!';
+        await carregarTudo();
+      } else {
+        msgEl.className = 'msg erro';
+        msgEl.textContent = resultado.erro;
+      }
+    }
+
+    async function abrirTopar(ofertaId, desejaFigurinhaId) {
+      let figurinhaParaOferecer = desejaFigurinhaId;
+
+      // Se a oferta é aberta (aceita qualquer coisa), pergunta qual repetida o usuário quer oferecer
+      if (!figurinhaParaOferecer) {
+        if (minhasRepetidas.length === 0) {
+          alert('Você não possui repetidas para oferecer em troca');
+          return;
+        }
+        const opcoes = minhasRepetidas.map(f => `${f.figurinha_id} - ${f.nome}`).join('\n');
+        figurinhaParaOferecer = prompt('Essa oferta aceita qualquer repetida. Digite o ID da figurinha que deseja oferecer:\n\n' + opcoes);
+        if (!figurinhaParaOferecer) return;
+      }
+
+      const resultado = await api.toparOferta(ofertaId, usuario.id, figurinhaParaOferecer);
+
+      if (resultado.sucesso) {
+        alert('Proposta enviada! Acompanhe em "Propostas".');
+        await carregarTudo();
+      } else {
+        alert('Erro: ' + resultado.erro);
+      }
+    }
+
+    function sair() {
+      limparSessao();
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>
