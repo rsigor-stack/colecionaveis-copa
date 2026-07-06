@@ -61,6 +61,10 @@
     .msg { margin-top: 10px; font-size: 14px; }
     .msg.erro { color: red; }
     .msg.sucesso { color: green; }
+    button:disabled {
+      background: #d1d5db;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -154,33 +158,49 @@
 
     function montarListaOfertas(ofertas) {
       const div = document.getElementById('listaOfertas');
-
+    
       if (ofertas.length === 0) {
         div.innerHTML = '<p>Nenhuma oferta disponível no momento.</p>';
         return;
       }
-
+    
       div.innerHTML = '';
-
+    
       ofertas.forEach(oferta => {
         const linha = document.createElement('div');
         linha.className = 'oferta';
-
+    
+        // Verifica se o usuário tem a figurinha pedida (ou alguma repetida, se for oferta aberta)
+        let podeTopar = false;
+        let motivoDesabilitado = '';
+    
+        if (oferta.deseja) {
+          podeTopar = minhasRepetidas.some(r => r.figurinha_id === oferta.deseja.id);
+          if (!podeTopar) motivoDesabilitado = 'Você não tem essa figurinha para oferecer';
+        } else {
+          podeTopar = minhasRepetidas.length > 0;
+          if (!podeTopar) motivoDesabilitado = 'Você não tem repetidas para oferecer';
+        }
+    
+        const botao = podeTopar
+          ? `<button onclick="abrirTopar('${oferta.id}', '${oferta.deseja ? oferta.deseja.id : ''}')">Topar</button>`
+          : `<button disabled title="${motivoDesabilitado}">Topar</button>`;
+    
         linha.innerHTML = `
           <div class="oferta-info">
             <img src="${oferta.oferece.imagem_url}" alt="${oferta.oferece.nome}">
             <div>
               <strong>${oferta.usuario_nome}</strong> oferece <strong>${oferta.oferece.nome}</strong><br>
               <small>Deseja: ${oferta.deseja ? oferta.deseja.nome : 'qualquer repetida'}</small>
+              ${!podeTopar ? `<br><small style="color: #999;">${motivoDesabilitado}</small>` : ''}
             </div>
           </div>
-          <button onclick="abrirTopar('${oferta.id}', '${oferta.deseja ? oferta.deseja.id : ''}')">Topar</button>
+          ${botao}
         `;
-
+    
         div.appendChild(linha);
       });
     }
-
     async function publicar() {
       const ofereceId = document.getElementById('selectOferece').value;
       const desejaId = document.getElementById('selectDeseja').value;
